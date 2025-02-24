@@ -6,6 +6,7 @@ import OfferLetterPage from "./Pages/OfferLetterPage";
 import OnboardingPage from "./Pages/OnboardingPage";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import LoginSignupPage from "./Pages/Login";
 
 const App = () => (
   <BrowserRouter>
@@ -16,6 +17,8 @@ const App = () => (
       <Route path="/resume-review" element={<ResumeReviewPage />} />
       <Route path="/offer-letter" element={<OfferLetterPage />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/login" element={<LoginSignupPage />} />
+
     </Routes>
     <Footer/>
   </BrowserRouter>

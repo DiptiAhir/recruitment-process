@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
+import LoginSignupPage from '../Pages/Login';
 
 const Navbar = () => (
-  <nav className="bg-primary text-white py-4 shadow-md">
+  <nav className="bg-indigo-700 text-white py-4 shadow-md">
     <div className="container mx-auto flex justify-between items-center px-4">
       {/* Logo */}
       <NavLink to="/" className="text-2xl font-bold text-white hover:text-indigo-200 transition">
@@ -44,6 +45,13 @@ const Navbar = () => (
           activeClassName="underline font-semibold"
         >
           Onboarding
+        </NavLink>
+        <NavLink
+          to="/login"
+          className="text-white hover:text-indigo-200 transition"
+          activeClassName="underline font-semibold"
+        >
+          Login
         </NavLink>
       </div>
 
