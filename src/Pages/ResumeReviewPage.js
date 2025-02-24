@@ -1,171 +1,167 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const ResumeReviewPage = () => {
-  const [candidates, setCandidates] = useState([]);
-  const [keyword, setKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState([]);
-  const [filteredCandidates, setFilteredCandidates] = useState([]);
+const ApplicationReview = () => {
+  const [applications, setApplications] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [jobSkills, setJobSkills] = useState("");
 
-  // Fetch candidates from the backend
+  // Fetch Applications from Server
+  const fetchApplications = async () => {
+    try {
+      const response = await axios.get("http://localhost:4000/api/v1/applications");
+      setApplications(response.data);
+    } catch (error) {
+      console.error("Error fetching applications:", error);
+      toast.error("Failed to fetch applications");
+    }
+  };
+
   useEffect(() => {
-    const fetchCandidates = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/candidates');
-        setCandidates(response.data);
-        setFilteredCandidates(response.data);
-      } catch (error) {
-        console.error('Error fetching candidates:', error);
-      }
-    };
-    fetchCandidates();
+    fetchApplications();
   }, []);
 
-  // Filter candidates based on keyword and status
-  useEffect(() => {
-    let filtered = candidates;
+  const handleStatusChange = async (id, status, email) => {
+    if (status === "Accepted") {
+      const confirmSend = window.confirm("Are you sure you want to send the interview email?");
+      if (!confirmSend) return;
 
-    if (keyword) {
-      filtered = filtered.filter((candidate) =>
-        candidate.name.toLowerCase().includes(keyword.toLowerCase())
-      );
+      try {
+        await axios.post("http://localhost:4000/api/v1/send-email", {
+          email,
+          subject: "Interview Invitation",
+          message: "Congratulations! You have been selected for an interview. Please check your email for further details."
+        });
+        toast.success("Interview email sent successfully!");
+      } catch (error) {
+        console.error("Error sending email:", error);
+        toast.error("Failed to send interview email");
+      }
     }
 
-    if (statusFilter.length > 0) {
-      filtered = filtered.filter((candidate) =>
-        statusFilter.includes(candidate.status)
-      );
-    }
-
-    setFilteredCandidates(filtered);
-  }, [keyword, statusFilter, candidates]);
-
-  const handleStatusChange = async (id, status) => {
     try {
-      await axios.put(`http://localhost:5000/api/candidates/${id}`, { status });
-      setCandidates((prev) =>
-        prev.map((candidate) =>
-          candidate._id === id ? { ...candidate, status } : candidate
-        )
-      );
+      await axios.put(`http://localhost:4000/api/v1/applications/${id}`, { status });
+      toast.success(`Status updated to ${status}`);
+      fetchApplications();
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
     }
   };
 
-  const handleNoteChange = async (id, notes) => {
+  // Delete an Application
+  const handleDeleteApplication = async (id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this application?");
+    if (!confirmDelete) return;
+
     try {
-      await axios.put(`http://localhost:5000/api/candidates/${id}`, { notes });
-      setCandidates((prev) =>
-        prev.map((candidate) =>
-          candidate._id === id ? { ...candidate, notes } : candidate
-        )
-      );
+      await axios.delete(`http://localhost:4000/api/v1/applications/${id}`);
+      toast.success("Application deleted successfully!");
+      fetchApplications();
     } catch (error) {
-      console.error('Error updating notes:', error);
+      console.error("Error deleting application:", error);
+      toast.error("Failed to delete application");
     }
   };
+
+  const filteredApplications = applications.filter((app) => {
+    return (
+      (app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.jobTitle.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (statusFilter ? app.status === statusFilter : true) &&
+      (jobSkills ? app.skills?.some((skill) => skill.toLowerCase().includes(jobSkills.toLowerCase())) : true)
+    );
+  });
 
   return (
-    <main className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6">Resume Review</h1>
+    <main className="container mx-auto py-8 px-6">
+      <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">Application Review</h1>
+      <ToastContainer position="top-right" autoClose={3000} />
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
+      <div className="flex flex-wrap gap-4 justify-end mb-4">
         <input
           type="text"
-          placeholder="Search by keyword"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          className="border border-gray-300 rounded-md px-4 py-2 w-full md:w-1/2 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+          placeholder="Search by Name or Job Title..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="border p-2 rounded w-72 shadow-sm focus:ring focus:ring-blue-300"
         />
         <select
-          multiple
           value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(Array.from(e.target.selectedOptions, (opt) => opt.value))
-          }
-          className="border border-gray-300 rounded-md px-4 py-2 w-full md:w-1/2 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border p-2 rounded shadow-sm bg-white"
         >
-          <option value="Applied">Applied</option>
-          <option value="Shortlisted">Shortlisted</option>
+          <option value="">All</option>
+          <option value="Pending">Pending</option>
+          <option value="Reviewed">Reviewed</option>
+          <option value="Accepted">Accepted</option>
           <option value="Rejected">Rejected</option>
-          <option value="Interviewed">Interviewed</option>
-          <option value="Offered">Offered</option>
         </select>
       </div>
 
-      {/* Resume Table */}
-      <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow">
-        <thead>
-          <tr className="bg-indigo-600 text-white">
-            <th className="px-4 py-2 text-left">Candidate Name</th>
-            <th className="px-4 py-2 text-left">Applied Date</th>
-            <th className="px-4 py-2 text-left">Resume</th>
-            <th className="px-4 py-2 text-left">Status</th>
-            <th className="px-4 py-2 text-left">Notes</th>
-            <th className="px-4 py-2 text-left">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCandidates.map((candidate) => (
-            <tr key={candidate._id} className="hover:bg-gray-100">
-              <td className="px-4 py-2">{candidate.name}</td>
-              <td className="px-4 py-2">{new Date(candidate.appliedDate).toLocaleDateString()}</td>
-              <td className="px-4 py-2">
-                <a
-                  href={candidate.resume}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  View Resume
-                </a>
-              </td>
-              <td className="px-4 py-2">
-                <select
-                  value={candidate.status}
-                  onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
-                  className="block w-full border border-gray-300 rounded-md px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
-                >
-                  <option className="bg-white hover:bg-indigo-100" value="Applied">
-                    Applied
-                  </option>
-                  <option className="bg-white hover:bg-indigo-100" value="Shortlisted">
-                    Shortlisted
-                  </option>
-                  <option className="bg-white hover:bg-indigo-100" value="Rejected">
-                    Rejected
-                  </option>
-                  <option className="bg-white hover:bg-indigo-100" value="Interviewed">
-                    Interviewed
-                  </option>
-                  <option className="bg-white hover:bg-indigo-100" value="Offered">
-                    Offered
-                  </option>
-                </select>
-              </td>
-              <td className="px-4 py-2">
-                <textarea
-                  value={candidate.notes || ''}
-                  onChange={(e) => handleNoteChange(candidate._id, e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                />
-              </td>
-              <td className="px-4 py-2">
-                <button
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                  onClick={() => alert(`Viewing ${candidate.name}'s resume`)}
-                >
-                  View
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Applications Table */}
+      <div className="overflow-x-auto">
+        {filteredApplications.length > 0 ? (
+          <table className="min-w-full bg-white border border-gray-200 shadow-md rounded-lg">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border px-4 py-2">Name</th>
+                <th className="border px-4 py-2">Job Title</th>
+                <th className="border px-4 py-2">Email</th>
+                <th className="border px-4 py-2">Experience</th>
+                <th className="border px-4 py-2">Skills</th>
+                <th className="border px-4 py-2">Status</th>
+                <th className="border px-4 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredApplications.map((app) => (
+                <tr key={app._id} className="hover:bg-gray-50 transition">
+                  <td className="border px-4 py-2">{app.name}</td>
+                  <td className="border px-4 py-2">{app.jobTitle}</td>
+                  <td className="border px-4 py-2">{app.email}</td>
+                  <td className="border px-4 py-2">{app.experience} years</td>
+                  <td className="border px-4 py-2">{app.skills?.join(", ")}</td>
+                  <td className="border px-4 py-2">
+                    <select
+                      value={app.status}
+                      onChange={(e) => handleStatusChange(app._id, e.target.value, app.email)}
+                      className={`border rounded px-2 py-1 bg-gray-100 
+                        ${app.status === "Pending" ? "text-yellow-500" : ""} 
+                        ${app.status === "Reviewed" ? "text-blue-500" : ""} 
+                        ${app.status === "Accepted" ? "text-green-500" : ""} 
+                        ${app.status === "Rejected" ? "text-red-500" : ""}`}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Reviewed">Reviewed</option>
+                      <option value="Accepted">Accepted</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </td>
+                  <td className="border px-4 py-2">
+                    <button
+                      onClick={() => handleDeleteApplication(app._id)}
+                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 transition"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-xl font-semibold text-gray-600">No applications found.</p>
+          </div>
+        )}
+      </div>
     </main>
   );
 };
 
-export default ResumeReviewPage;
+export default ApplicationReview;
